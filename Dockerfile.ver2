@@ -1,0 +1,68 @@
+FROM centos:7
+
+RUN yum clean all && yum update -y && yum install -y \
+	vim \
+	tar \
+	sudo \
+	java-1.8.0-openjdk-devel.x86_64	\
+	net-tools \
+	tcpdump
+
+#RUN mkdir /sw; useradd -d /sw/tranmgr -s /bin/bash -m tranmgr; 
+RUN mkdir -p /sw && \
+chmod 777 /sw && \
+useradd -b /sw -d /sw/tranmgr -m tranmgr -s /bin/bash && \
+chown tranmgr:root /sw 
+
+COPY tran_agent_ver2.tar.gz /sw/tranmgr 
+
+#RUN su tranmgr; cd /sw/tranmgr; tar -zxvf tran_agent_ver2.tar.gz; mv _bash_profile .bash_profile;
+RUN cd /sw/tranmgr; tar -zxvf tran_agent_ver2.tar.gz; mv _bash_profile .bash_profile;
+
+RUN mkdir -p /log/tranmgr/logs/proc/libtran; chown -R tranmgr:tranmgr /log/tranmgr; 
+
+
+RUN cd /sw/tranmgr; \
+	tar -zxvf tran_agent_ver2.tar.gz;
+
+#volume ["/log"]
+
+COPY tranm-entrypoint.sh /usr/local/bin/
+
+#ENV GOSU_VERSION=1.11
+#RUN gpg --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \
+#    && curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-amd64" \
+#    && curl -o /usr/local/bin/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-amd64.asc" \
+#    && gpg --verify /usr/local/bin/gosu.asc \
+#    && rm /usr/local/bin/gosu.asc \
+#    && rm -r /root/.gnupg/ \
+#    && chmod +x /usr/local/bin/gosu \
+#    # Verify that the binary works
+#    && gosu nobody true
+
+#RUN timedatectl set-timezone Asia/Seoul
+#ENV TZ Asia/Seoul;
+RUN sudo ln -snf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+ENV TRAN_HOME /sw/tranmgr
+ENV TRANM_USER tranmgr
+ENV USER tranmgr
+ENV LOGNAME tranmgr
+ENV TRAN_AGT_HOME /sw/tranmgr/agt
+ENV TRAN_AGT_CFG_FILE /sw/tranmgr/agt/config/agt.cfg
+#ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+#ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/sw/tranmgr/agt/bin:/sw/tranmgr/agt/scripts:/usr/local/bin:/usr/bin:/usr/sbin:/usr/local/mysql/bin:/opt/IBM/xlc/13.1.2/bin:/sw/tranmgr/java7/bin:/usr/ucb:/usr/bin/X11:/sbin:/sw/tranmgr/java7/include:.:/sw/tranmgr/workspace/script:/sw/tranmgr/agt/bin:/tmax/tmax/cbs/bin
+ENV LD_LIBRARY_PATH /usr/lib:/sw/tranmgr/api:/sw/tranmgr/agt/lib:/sw/tranmgr/agt/src/liandli/lib
+ENV TRAN_LOG_HOME /sw/tranmgr/agt/logs
+
+WORKDIR /sw/tranmgr
+USER tranmgr
+
+RUN ln -s /log/tranmgr/logs /sw/tranmgr/agt/logs
+#RUN /sw/tranmgr/agt/bin/ipc_clear.sh
+CMD ["/sw/tranmgr/agt/bin/tran_agent.sh", "start"]
+
+ENTRYPOINT ["tranm-entrypoint.sh"]
+#CMD ["tail", "-f", "/dev/null"]
+
+EXPOSE 3858
+
