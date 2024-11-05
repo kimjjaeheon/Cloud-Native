@@ -1,0 +1,67 @@
+FROM centos:7
+
+RUN yum clean all && yum update -y && yum install -y \
+	vim \
+	tar \
+	sudo \
+	java-1.8.0-openjdk-devel.x86_64	\
+	net-tools \
+	tcpdump
+
+#RUN mkdir /sw; useradd -d /sw/tranm -s /bin/bash -m tranm; 
+RUN mkdir -p /sw && \
+chmod 777 /sw && \
+useradd -b /sw -d /sw/tranm -m tranm -s /bin/bash && \
+chown tranm:root /sw 
+
+COPY tran_agent_ver1.tar.gz /sw/tranm 
+
+#RUN su tranm; cd /sw/tranm; tar -zxvf tran_agent_ver1.tar.gz; mv _bash_profile .bash_profile;
+RUN cd /sw/tranm; tar -zxvf tran_agent_ver1.tar.gz; mv _bash_profile .bash_profile;
+
+RUN mkdir -p /log/tranm/logs/proc/libtran; chown -R tranm:tranm /log/tranm; 
+
+
+RUN cd /sw/tranm; \
+	tar -zxvf tran_agent_ver1.tar.gz;
+
+#volume ["/log"]
+
+COPY tranm-entrypoint.sh /usr/local/bin/
+
+#ENV GOSU_VERSION=1.11
+#RUN gpg --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \
+#    && curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-amd64" \
+#    && curl -o /usr/local/bin/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-amd64.asc" \
+#    && gpg --verify /usr/local/bin/gosu.asc \
+#    && rm /usr/local/bin/gosu.asc \
+#    && rm -r /root/.gnupg/ \
+#    && chmod +x /usr/local/bin/gosu \
+#    # Verify that the binary works
+#    && gosu nobody true
+
+#RUN timedatectl set-timezone Asia/Seoul
+#ENV TZ Asia/Seoul;
+RUN sudo ln -snf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+ENV TRAN_HOME /sw/tranm
+ENV TRANM_USER tranm
+ENV USER tranm
+ENV LOGNAME tranm
+ENV TRAN_AGT_HOME /sw/tranm/agt
+ENV TRAN_AGT_CFG_FILE /sw/tranm/agt/config/agt.cfg
+#ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+#ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/sw/tranm/agt/bin:/sw/tranm/agt/scripts:/usr/local/bin:/usr/bin:/usr/sbin:/usr/local/mysql/bin:/opt/IBM/xlc/13.1.2/bin:/sw/tranm/java7/bin:/usr/ucb:/usr/bin/X11:/sbin:/sw/tranm/java7/include:.:/sw/tranm/workspace/script:/sw/tranm/agt/bin:/tmax/tmax/cbs/bin
+ENV LD_LIBRARY_PATH /usr/lib:/sw/tranm/api:/sw/tranm/agt/lib:/sw/tranm/agt/src/liandli/lib
+ENV TRAN_LOG_HOME /sw/tranm/agt/logs
+
+WORKDIR /sw/tranm
+USER tranm
+
+RUN ln -s /log/tranm/logs /sw/tranm/agt/logs
+#RUN /sw/tranm/agt/bin/ipc_clear.sh
+
+ENTRYPOINT ["tranm-entrypoint.sh"]
+CMD ["tail", "-f", "/dev/null"]
+
+EXPOSE 3858
+
