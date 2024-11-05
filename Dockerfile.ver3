@@ -1,0 +1,47 @@
+FROM centos:7
+
+RUN yum clean all && yum update -y && yum install -y \
+	vim \
+	tar \
+	sudo \
+	java-1.8.0-openjdk-devel.x86_64	\
+	net-tools \
+	tcpdump
+
+RUN mkdir -p /sw && \
+chmod 777 /sw && \
+useradd -b /sw -d /sw/tranmgr -m tranmgr -s /bin/bash && \
+chown tranmgr:root /sw 
+
+COPY tran_agent_ver2.tar.gz /sw/tranmgr 
+
+RUN cd /sw/tranmgr; tar -zxvf tran_agent_ver2.tar.gz; mv _bash_profile .bash_profile;
+
+RUN mkdir -p /log/tranmgr/logs/proc/libtran; chown -R tranmgr:tranmgr /log/tranmgr; 
+
+RUN cd /sw/tranmgr; \
+	tar -zxvf tran_agent_ver2.tar.gz;
+
+COPY tranm-entrypoint.sh /usr/local/bin/
+
+RUN sudo ln -snf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+ENV TRAN_HOME /sw/tranmgr
+ENV TRANM_USER tranmgr
+ENV USER tranmgr
+ENV LOGNAME tranmgr
+ENV TRAN_AGT_HOME /sw/tranmgr/agt
+ENV TRAN_AGT_CFG_FILE /sw/tranmgr/agt/config/agt.cfg
+ENV LD_LIBRARY_PATH /usr/lib:/sw/tranmgr/api:/sw/tranmgr/agt/lib
+ENV TRAN_LOG_HOME /sw/tranmgr/agt/logs
+
+WORKDIR /sw/tranmgr
+USER tranmgr
+
+RUN ln -s /log/tranmgr/logs /sw/tranmgr/agt/logs
+
+#ENTRYPOINT ["tranm-entrypoint.sh"]
+
+CMD ["/sw/tranmgr/agt/bin/tran_agent.sh", "start" ; "tail", "-f", "/dev/null"]
+
+EXPOSE 3858
+
